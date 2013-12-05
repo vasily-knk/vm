@@ -18,14 +18,28 @@ struct translator_impl
 #undef VISITOR_FUNCTION
 
 private:
+    Instruction make_instruction(TokenKind op, VarType type1, VarType type2);
+
+private:
     Bytecode *bytecode() 
     {
         return &bytecode_;
     }
 
+    struct error
+        : std::runtime_error
+    {
+        error(string const &msg)
+            : std::runtime_error(msg)
+        {
+
+        }
+    };
+
 private:
     Bytecode bytecode_;
     VarType tos_type_;
+    Code* dst_code_;
 };
 
 } // namespace mathvm
