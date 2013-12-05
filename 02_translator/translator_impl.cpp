@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "translator_impl.h"
+#include "code_impl.h"
 #include "parser.h"
 
 namespace mathvm
@@ -14,12 +15,12 @@ translator_impl::ret_type translator_impl::visitDoubleLiteralNode(DoubleLiteralN
 
 translator_impl::ret_type translator_impl::visitWhileNode( WhileNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitForNode( ForNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitFunctionNode( FunctionNode* node )
@@ -29,27 +30,27 @@ translator_impl::ret_type translator_impl::visitFunctionNode( FunctionNode* node
 
 translator_impl::ret_type translator_impl::visitBlockNode( BlockNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitLoadNode( LoadNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitIfNode( IfNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitNativeCallNode( NativeCallNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitPrintNode( PrintNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitBinaryOpNode(BinaryOpNode* node)
@@ -59,7 +60,8 @@ translator_impl::ret_type translator_impl::visitBinaryOpNode(BinaryOpNode* node)
     node->right()->visit(this);
     const VarType type2 = tos_type_;
 
-    bytecode()->addInsn(make_instruction(node->kind(), type1, type2));
+    const Instruction insn = make_instruction(node->kind(), type1, type2);
+    bytecode()->addInsn(insn);
 }
 
 
@@ -96,8 +98,6 @@ Instruction translator_impl::make_instruction(TokenKind op, VarType type1, VarTy
 }
 
 
-
-
 translator_impl::ret_type translator_impl::visitStringLiteralNode(StringLiteralNode* node)
 {
     const uint16_t id = dst_code_->makeStringConstant(node->literal());
@@ -109,7 +109,7 @@ translator_impl::ret_type translator_impl::visitStringLiteralNode(StringLiteralN
 
 translator_impl::ret_type translator_impl::visitCallNode( CallNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitIntLiteralNode(IntLiteralNode* node)
@@ -126,12 +126,12 @@ translator_impl::ret_type translator_impl::visitStoreNode(StoreNode* node)
 
 translator_impl::ret_type translator_impl::visitReturnNode( ReturnNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 translator_impl::ret_type translator_impl::visitUnaryOpNode( UnaryOpNode* node )
 {
-    throw std::logic_error("The method or operation is not implemented.");
+    throw error("The method or operation is not implemented.");
 }
 
 Status* translator_impl::translate(const string& program, Code **code)
@@ -141,11 +141,10 @@ Status* translator_impl::translate(const string& program, Code **code)
     if (status && !status->isOk())
         return status;
 
-    
+    dst_code_ = new code_impl();
     try
     {
         parser.top()->node()->visit(this);
-
         *code = dst_code_;
         return new Status();
     }
@@ -153,6 +152,13 @@ Status* translator_impl::translate(const string& program, Code **code)
     {
         return new Status(e.what());
     }
+}
+
+
+translator_impl::translator_impl()
+    : dst_code_(NULL)
+{
+
 }
 
 } // namespace mathvm

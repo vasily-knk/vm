@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ast.h"
+#include "code_impl.h"
 
 namespace mathvm
 {
@@ -9,6 +10,9 @@ struct translator_impl
     : Translator
     , AstVisitor
 {
+    translator_impl();
+    
+    
     Status* translate(const string& program, Code **code);
 
     typedef void ret_type;
@@ -21,9 +25,9 @@ private:
     Instruction make_instruction(TokenKind op, VarType type1, VarType type2);
 
 private:
-    Bytecode *bytecode() 
+    Bytecode *bytecode()
     {
-        return &bytecode_;
+        return dst_code_->bytecode();
     }
 
     struct error
@@ -37,9 +41,8 @@ private:
     };
 
 private:
-    Bytecode bytecode_;
     VarType tos_type_;
-    Code* dst_code_;
+    code_impl* dst_code_;
 };
 
 } // namespace mathvm
