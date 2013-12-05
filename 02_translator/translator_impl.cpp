@@ -33,7 +33,7 @@ translator_impl::ret_type translator_impl::visitBlockNode( BlockNode* node )
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitLoadNode( LoadNode* node )
+translator_impl::ret_type translator_impl::visitLoadNode(LoadNode* node)
 {
     throw error("The method or operation is not implemented.");
 }
@@ -121,7 +121,39 @@ translator_impl::ret_type translator_impl::visitIntLiteralNode(IntLiteralNode* n
 
 translator_impl::ret_type translator_impl::visitStoreNode(StoreNode* node)
 {
+    const std::pair<context_id, var_id> ids = get_var_ids(node->var(), true);
+
+    const VarType var_type = node->var()->type();
+
+    Instruction ins;
+    switch(var_type)
+    {
+    case VT_INT   : ins = BC_STORECTXIVAR; break;
+    case VT_DOUBLE: ins = BC_STORECTXDVAR; break;
+    case VT_STRING: ins = BC_STORECTXSVAR; break;
+    default: assert(false);
+    }
+
     node->value()->visit(this);
+
+    if (tos_type_ != var_type)
+        throw error("Typecasts not supported yet");
+
+    const TokenKind op = node->op();
+
+    if (op == tASSIGN)
+    {
+        bytecode()->addInsn(ins);
+        bytecode()->addInt16(ids.first);
+        bytecode()->addInt16(ids.second);
+    }
+    else
+    {
+        throw error("Unsupported store operation");
+    }
+
+    // stub for a = b = 3
+    tos_type_ = VT_VOID;
 }
 
 translator_impl::ret_type translator_impl::visitReturnNode( ReturnNode* node )
@@ -159,6 +191,33 @@ translator_impl::translator_impl()
     : dst_code_(NULL)
 {
 
+}
+
+std::pair<context_id, var_id> translator_impl::get_var_ids(AstVar const *var, bool store)
+{
+    Scope *scope = var->owner();
+
+    context_ids_t::iterator it = context_ids_.find(scope);
+    if (it == context_ids_.end())
+    {
+        assert(store);
+
+        const context_id id = dst_code_->new_context();
+        it = context_ids_.insert(std::make_pair(scope, id)).first;
+    }
+
+    context_t *context = dst_code_->context(it->second);
+
+    context_t::vars_t::iterator var_it = context->vars.find(var->name());
+    if (var_it == context->vars.end())
+    {
+        assert(store);
+
+        const var_id id = context->vars.size();
+        var_it = context->vars.insert(std::make_pair(var->name(), id)).first;
+    }
+    
+    return std::make_pair(it->second, var_it->second);
 }
 
 } // namespace mathvm

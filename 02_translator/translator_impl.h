@@ -23,6 +23,7 @@ struct translator_impl
 
 private:
     Instruction make_instruction(TokenKind op, VarType type1, VarType type2);
+    std::pair<context_id, var_id> get_var_ids(AstVar const *var, bool store);
 
 private:
     Bytecode *bytecode()
@@ -43,6 +44,9 @@ private:
 private:
     VarType tos_type_;
     code_impl* dst_code_;
+    
+    typedef map<Scope*, context_id> context_ids_t;
+    context_ids_t context_ids_;
 };
 
 } // namespace mathvm
