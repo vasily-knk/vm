@@ -24,3 +24,4 @@ using std::map;
 
 #include <stdexcept>
 
+#include <stack>

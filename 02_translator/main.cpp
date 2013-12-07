@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "mathvm.h"
 
 #include <stdio.h>

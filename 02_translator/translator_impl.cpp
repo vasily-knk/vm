@@ -30,15 +30,35 @@ translator_impl::ret_type translator_impl::visitFunctionNode(FunctionNode* node)
 
 translator_impl::ret_type translator_impl::visitBlockNode(BlockNode* node)
 {
-    current_scope_ = node->scope();    
+    add_context(node->scope());
+
     for (uint32_t i = 0; i < node->nodes(); ++i)
     {
+        current_scope_ = node->scope();
         tos_type_ = VT_VOID;
+        
         node->nodeAt(i)->visit(this);
         if (tos_type_ != VT_VOID)
             bytecode()->addInsn(BC_DUMP);
     }
+    current_scope_ = node->scope();
     tos_type_ = VT_VOID;
+    
+    assert(current_scope_ == node->scope());
+    contexts_.erase(current_scope_);
+}
+
+void translator_impl::add_context(Scope *scope)
+{
+    context_t context(contexts_.size());
+
+    for (Scope::VarIterator it(scope, false); it.hasNext();)
+    {
+        AstVar const *var = it.next();
+        context.vars.insert(std::make_pair(var->name(), context.vars.size()));
+    }
+
+    contexts_.insert(make_pair(scope, context));
 }
 
 
@@ -197,34 +217,16 @@ translator_impl::translator_impl()
 
 }
 
-std::pair<context_id, var_id> translator_impl::get_var_ids(AstVar const *var, bool store, bool *out_is_local)
+std::pair<context_id_t, var_id_t> translator_impl::get_var_ids(AstVar const *var, bool store, bool *out_is_local)
 {
-    Scope *scope = var->owner();
-
-    context_ids_t::iterator it = context_ids_.find(scope);
-    if (it == context_ids_.end())
-    {
-        assert(store);
-
-        const context_id id = dst_code_->new_context();
-        it = context_ids_.insert(std::make_pair(scope, id)).first;
-    }
-
-    context_t *context = dst_code_->context(it->second);
-
-    context_t::vars_t::iterator var_it = context->vars.find(var->name());
-    if (var_it == context->vars.end())
-    {
-        assert(store);
-
-        const var_id id = context->vars.size();
-        var_it = context->vars.insert(std::make_pair(var->name(), id)).first;
-    }
-
+    Scope const *scope = var->owner();
+    
     if (out_is_local)
         *out_is_local = (scope == current_scope_);
-    
-    return std::make_pair(it->second, var_it->second);
+
+    context_t const &context = contexts_.at(scope);
+    const var_id_t var_id = context.vars.at(var->name());
+    return std::make_pair(context.id, var_id);
 }
 
 void translator_impl::load_tos_var( AstVar const *var )
@@ -289,7 +291,7 @@ Instruction translator_impl::get_var_insn(bool store, AstVar const *var, bool is
 void translator_impl::process_var(bool store, AstVar const *var)
 {
     bool is_local;
-    const std::pair<context_id, var_id> ids = get_var_ids(var, true, /*out*/ &is_local);
+    const std::pair<context_id_t, var_id_t> ids = get_var_ids(var, true, /*out*/ &is_local);
 
     const VarType var_type = var->type();
 

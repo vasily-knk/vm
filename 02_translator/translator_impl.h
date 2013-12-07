@@ -23,8 +23,10 @@ struct translator_impl
 
 private:
     Instruction make_instruction(TokenKind op, VarType type1, VarType type2);
-    std::pair<context_id, var_id> get_var_ids(AstVar const *var, bool store, bool *out_is_local);
+    std::pair<context_id_t, var_id_t> get_var_ids(AstVar const *var, bool store, bool *out_is_local);
 
+    void add_context(Scope *scope);
+    
     void load_tos_var(AstVar const *var);
     void store_tos_var(AstVar const *var);
     Instruction get_var_insn(bool store, AstVar const *var, bool is_local);
@@ -46,13 +48,23 @@ private:
         }
     };
 
+    struct context_t
+    {
+        context_t(context_id_t id)
+            : id(id)
+        { }
+        
+        context_id_t id;
+        map<string, var_id_t> vars;
+    };
+
 private:
     VarType tos_type_;
     code_impl *dst_code_;
     Scope *current_scope_;
     
-    typedef map<Scope const*, context_id> context_ids_t;
-    context_ids_t context_ids_;
+    typedef map<Scope const*, context_t> contexts_t;
+    contexts_t contexts_;
 };
 
 } // namespace mathvm
