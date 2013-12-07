@@ -35,13 +35,15 @@ translator_impl::ret_type translator_impl::visitBlockNode(BlockNode* node)
     for (uint32_t i = 0; i < node->nodes(); ++i)
     {
         current_scope_ = node->scope();
+        dst_code_->set_context(contexts_.at(current_scope_).id);
         tos_type_ = VT_VOID;
         
         node->nodeAt(i)->visit(this);
         if (tos_type_ != VT_VOID)
-            bytecode()->addInsn(BC_DUMP);
+            bytecode()->addInsn(BC_POP);
     }
     current_scope_ = node->scope();
+    dst_code_->set_context(contexts_.at(current_scope_).id);
     tos_type_ = VT_VOID;
     
     assert(current_scope_ == node->scope());

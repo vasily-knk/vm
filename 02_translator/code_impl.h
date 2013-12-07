@@ -55,6 +55,8 @@ struct code_impl
         { }
     };
 
+public:
+    void set_context(context_id_t id);
 
 private:
     void process_insn(Instruction insn);
@@ -74,22 +76,37 @@ private:
     }
 
 private:
-
     template<typename T> void process_load();
     template<typename T> void process_load_val(T val);
     template<typename T> void process_binary(Instruction insn);
     template<typename T> void process_unary(Instruction insn);
 
-    template<> void process_binary<i_t>(Instruction insn);
-    template<> void process_binary<d_t>(Instruction insn);
+    template<typename T> T process_binary_impl(Instruction insn, T val1, T val2);
+    i_t process_binary_impl(Instruction insn, i_t val_1, i_t val_2);
+    d_t process_binary_impl(Instruction insn, d_t val_1, d_t val_2);
+
+    template<typename T> void process_print();
+    template<typename T> void process_load_local();
+    template<typename T> void process_load_ctx();
+    template<typename T> void process_load_var(context_id_t context_id, var_id_t var_id);
+    template<typename T> void process_store_local();
+    template<typename T> void process_store_ctx();
+    template<typename T> void process_store_var(context_id_t context_id, var_id_t var_id);
 
 private:
     Bytecode bytecode_;
+
+    typedef map<size_t, context_id_t> context_ids_t;
+    context_ids_t context_ids_;
+
     typedef map<std::pair<context_id_t, var_id_t>, Var> vars_t;
     typedef std::stack<Var> stack_t;
     vars_t vars_;
     stack_t stack_;
     size_t pos_;
+    context_id_t context_id_;
 };
+
+
 
 } //namespace mathvm
