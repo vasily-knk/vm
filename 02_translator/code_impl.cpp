@@ -7,7 +7,7 @@ namespace mathvm
     
 code_impl::code_impl()
 {
-
+    zero_string_id_ = makeStringConstant("");
 }
 
 code_impl::~code_impl()
@@ -45,7 +45,7 @@ void code_impl::process_insn(Instruction insn)
     case BC_SLOAD: process_load<s_t>(); break;
     case BC_DLOAD0: process_load_val<d_t>(0); break;
     case BC_ILOAD0: process_load_val<i_t>(0); break;
-    //case BC_SLOAD0: process_load_val<s_t>(""); break;
+    case BC_SLOAD0: process_load_val<s_t>(constantById(zero_string_id_).c_str()); break;
     case BC_DLOAD1: process_load_val<d_t>(1); break;
     case BC_ILOAD1: process_load_val<i_t>(1); break;
     case BC_DLOADM1: process_load_val<d_t>(-1); break;

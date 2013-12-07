@@ -95,6 +95,7 @@ private:
 
 private:
     Bytecode bytecode_;
+    int16_t zero_string_id_;
 
     typedef map<size_t, context_id_t> context_ids_t;
     context_ids_t context_ids_;
