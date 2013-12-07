@@ -23,20 +23,24 @@ translator_impl::ret_type translator_impl::visitForNode( ForNode* node )
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitFunctionNode( FunctionNode* node )
+translator_impl::ret_type translator_impl::visitFunctionNode(FunctionNode* node)
 {
-    node->body()->visitChildren(this);
+    node->body()->visit(this);
 }
 
-translator_impl::ret_type translator_impl::visitBlockNode( BlockNode* node )
+translator_impl::ret_type translator_impl::visitBlockNode(BlockNode* node)
 {
-    throw error("The method or operation is not implemented.");
+    current_scope_ = node->scope();    
+    for (uint32_t i = 0; i < node->nodes(); ++i)
+    {
+        tos_type_ = VT_VOID;
+        node->nodeAt(i)->visit(this);
+        if (tos_type_ != VT_VOID)
+            bytecode()->addInsn(BC_DUMP);
+    }
+    tos_type_ = VT_VOID;
 }
 
-translator_impl::ret_type translator_impl::visitLoadNode(LoadNode* node)
-{
-    throw error("The method or operation is not implemented.");
-}
 
 translator_impl::ret_type translator_impl::visitIfNode( IfNode* node )
 {
@@ -48,9 +52,23 @@ translator_impl::ret_type translator_impl::visitNativeCallNode( NativeCallNode* 
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitPrintNode( PrintNode* node )
+translator_impl::ret_type translator_impl::visitPrintNode(PrintNode* node)
 {
-    throw error("The method or operation is not implemented.");
+    for (uint32_t i = 0; i < node->operands(); ++i)
+    {
+        node->operandAt(i)->visit(this);
+        Instruction insn;
+        switch(tos_type_)
+        {
+        case VT_INT   : insn = BC_IPRINT; break;
+        case VT_DOUBLE: insn = BC_DPRINT; break;
+        case VT_STRING: insn = BC_SPRINT; break;
+        default: throw error("Unprintable type");
+        }
+        bytecode()->addInsn(insn);
+    }
+
+    tos_type_ = VT_VOID;
 }
 
 translator_impl::ret_type translator_impl::visitBinaryOpNode(BinaryOpNode* node)
@@ -60,7 +78,8 @@ translator_impl::ret_type translator_impl::visitBinaryOpNode(BinaryOpNode* node)
     node->right()->visit(this);
     const VarType type2 = tos_type_;
 
-    const Instruction insn = make_instruction(node->kind(), type1, type2);
+    const TokenKind op = node->kind();
+    const Instruction insn = make_instruction(op, type1, type2);
     bytecode()->addInsn(insn);
 }
 
@@ -121,39 +140,23 @@ translator_impl::ret_type translator_impl::visitIntLiteralNode(IntLiteralNode* n
 
 translator_impl::ret_type translator_impl::visitStoreNode(StoreNode* node)
 {
-    const std::pair<context_id, var_id> ids = get_var_ids(node->var(), true);
-
-    const VarType var_type = node->var()->type();
-
-    Instruction ins;
-    switch(var_type)
-    {
-    case VT_INT   : ins = BC_STORECTXIVAR; break;
-    case VT_DOUBLE: ins = BC_STORECTXDVAR; break;
-    case VT_STRING: ins = BC_STORECTXSVAR; break;
-    default: assert(false);
-    }
-
     node->value()->visit(this);
 
-    if (tos_type_ != var_type)
-        throw error("Typecasts not supported yet");
-
     const TokenKind op = node->op();
-
     if (op == tASSIGN)
-    {
-        bytecode()->addInsn(ins);
-        bytecode()->addInt16(ids.first);
-        bytecode()->addInt16(ids.second);
-    }
+        store_tos_var(node->var());
     else
-    {
         throw error("Unsupported store operation");
-    }
 
-    // stub for a = b = 3
-    tos_type_ = VT_VOID;
+    // a = b = 3
+    load_tos_var(node->var());
+    tos_type_ = node->var()->type();
+}
+
+translator_impl::ret_type translator_impl::visitLoadNode(LoadNode* node)
+{
+    load_tos_var(node->var());
+    tos_type_ = node->var()->type();
 }
 
 translator_impl::ret_type translator_impl::visitReturnNode( ReturnNode* node )
@@ -189,11 +192,12 @@ Status* translator_impl::translate(const string& program, Code **code)
 
 translator_impl::translator_impl()
     : dst_code_(NULL)
+    , current_scope_(NULL)
 {
 
 }
 
-std::pair<context_id, var_id> translator_impl::get_var_ids(AstVar const *var, bool store)
+std::pair<context_id, var_id> translator_impl::get_var_ids(AstVar const *var, bool store, bool *out_is_local)
 {
     Scope *scope = var->owner();
 
@@ -216,8 +220,88 @@ std::pair<context_id, var_id> translator_impl::get_var_ids(AstVar const *var, bo
         const var_id id = context->vars.size();
         var_it = context->vars.insert(std::make_pair(var->name(), id)).first;
     }
+
+    if (out_is_local)
+        *out_is_local = (scope == current_scope_);
     
     return std::make_pair(it->second, var_it->second);
+}
+
+void translator_impl::load_tos_var( AstVar const *var )
+{
+    process_var(false, var);
+}
+
+void translator_impl::store_tos_var(AstVar const *var)
+{
+    process_var(true, var);
+}
+
+Instruction translator_impl::get_var_insn(bool store, AstVar const *var, bool is_local)
+{
+    const VarType var_type = var->type();
+    if (store)
+    {
+        if (!is_local)
+        {
+            switch(var_type)
+            {
+            case VT_INT   : return BC_STORECTXIVAR;
+            case VT_DOUBLE: return BC_STORECTXDVAR;
+            case VT_STRING: return BC_STORECTXSVAR;
+            }
+        }
+        else
+        {
+            switch(var_type)
+            {
+            case VT_INT   : return BC_STOREIVAR;
+            case VT_DOUBLE: return BC_STOREDVAR;
+            case VT_STRING: return BC_STORESVAR;
+            }
+        }
+    }
+    else
+    {
+        if (!is_local)
+        {
+            switch(var_type)
+            {
+            case VT_INT   : return BC_LOADCTXIVAR;
+            case VT_DOUBLE: return BC_LOADCTXDVAR;
+            case VT_STRING: return BC_LOADCTXSVAR;
+            }
+        }
+        else
+        {
+            switch(var_type)
+            {
+            case VT_INT   : return BC_LOADIVAR;
+            case VT_DOUBLE: return BC_LOADDVAR;
+            case VT_STRING: return BC_LOADSVAR;
+            }
+        }
+    }
+    assert(0);
+    return BC_INVALID;
+}
+
+void translator_impl::process_var(bool store, AstVar const *var)
+{
+    bool is_local;
+    const std::pair<context_id, var_id> ids = get_var_ids(var, true, /*out*/ &is_local);
+
+    const VarType var_type = var->type();
+
+    if (store && tos_type_ != var_type)
+        throw error("Typecasts not supported yet");
+
+    const Instruction ins = get_var_insn(store, var, is_local);
+
+    bytecode()->addInsn(ins);
+    if (!is_local)
+        bytecode()->addInt16(ids.first);
+    bytecode()->addInt16(ids.second);
 }
 
 } // namespace mathvm
