@@ -19,6 +19,9 @@ struct translator_impl
 #undef VISITOR_FUNCTION
 
 private:
+    void init();
+    void prepare(AstFunction *top);
+
     Instruction make_instruction(TokenKind op, VarType type1, VarType type2);
     std::pair<context_id_t, var_id_t> get_var_ids(AstVar const *var, bool store, bool *out_is_local);
 
@@ -29,10 +32,12 @@ private:
     Instruction get_var_insn(bool store, AstVar const *var, bool is_local);
     void process_var(bool store, AstVar const *var);
 
+    function_id_t find_function(string const &name) const;
+
 private:
     Bytecode *bytecode()
     {
-        return dst_code_->dst_bc();
+        return dst_code_->get_function_dst(dst_func_id_)->bytecode_dst();
     }
 
     struct context_t
@@ -42,13 +47,18 @@ private:
         { }
         
         context_id_t id;
+        
         typedef map<string, var_id_t> vars_t;
         vars_t vars;
+
+        typedef map<string, function_id_t> functions_t;
+        functions_t functions;
     };
 
 private:
     VarType tos_type_;
     code_impl *dst_code_;
+    function_id_t dst_func_id_;
     Scope *current_scope_;
     
     // used only to pass signature from function node to inner block node
@@ -58,4 +68,4 @@ private:
     contexts_t contexts_;
 };
 
-} // namespace mathvm
+} // namespace mathvmo

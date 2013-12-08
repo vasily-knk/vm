@@ -13,7 +13,6 @@ code_impl::code_impl()
 
 code_impl::~code_impl()
 {
-
 }
 
 Status* code_impl::execute(vector<Var*>& vars)
@@ -31,16 +30,15 @@ Status* code_impl::execute(vector<Var*>& vars)
     }
 }
 
-
-
-void code_impl::set_context(context_id_t id)
+function_id_t code_impl::add_function()
 {
-    context_ids_[bytecode_.length()] = id;
+    funcs_.push_back(function_impl());
+    return funcs_.size() - 1;
 }
 
-Bytecode *code_impl::dst_bc()
+function_impl *code_impl::get_function_dst(function_id_t id)
 {
-    return &bytecode_;
+    return &funcs_.at(id);
 }
 
 

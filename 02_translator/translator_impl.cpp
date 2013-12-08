@@ -25,6 +25,11 @@ void translator_impl::visitForNode( ForNode* node )
 
 void translator_impl::visitFunctionNode(FunctionNode* node)
 {
+    context_t const &context = contexts_.at(current_scope_);
+    const function_id_t id = context.functions.at(node->name());
+    
+    dst_func_id_ = id;
+
     signature_ = &node->signature();
     node->body()->visit(this);
 }
@@ -49,7 +54,7 @@ void translator_impl::visitBlockNode(BlockNode* node)
     for (size_t i = 0; i < to_visit.size(); ++i)
     {
         current_scope_ = node->scope();
-        dst_code_->set_context(contexts_.at(current_scope_).id);
+        dst_code_->get_function_dst(dst_func_id_)->set_context(contexts_.at(current_scope_).id);
         tos_type_ = VT_VOID;
 
         to_visit.at(i)->visit(this);
@@ -58,7 +63,7 @@ void translator_impl::visitBlockNode(BlockNode* node)
     }
 
     current_scope_ = node->scope();
-    dst_code_->set_context(contexts_.at(current_scope_).id);
+    dst_code_->get_function_dst(dst_func_id_)->set_context(contexts_.at(current_scope_).id);
     tos_type_ = VT_VOID;
     
     assert(current_scope_ == node->scope());
@@ -86,7 +91,16 @@ void translator_impl::add_context(Scope *scope, Signature const *signature)
     for (Scope::VarIterator it(scope, false); it.hasNext();)
     {
         AstVar const *var = it.next();
-        context.vars.insert(std::make_pair(var->name(), context.vars.size()));
+        const bool insertion = context.vars.insert(std::make_pair(var->name(), context.vars.size())).second;
+        assert(insertion);
+    }
+
+    for (Scope::FunctionIterator it(scope, false); it.hasNext();)
+    {
+        AstFunction const *fn = it.next();
+        const function_id_t id = dst_code_->add_function();
+        const bool insertion = context.functions.insert(make_pair(fn->name(), id)).second;
+        assert(insertion);
     }
 
     contexts_.insert(make_pair(scope, context));
@@ -210,7 +224,7 @@ void translator_impl::visitLoadNode(LoadNode* node)
     tos_type_ = node->var()->type();
 }
 
-void translator_impl::visitReturnNode( ReturnNode* node )
+void translator_impl::visitReturnNode(ReturnNode* node)
 {
     throw error("The method or operation is not implemented.");
 }
@@ -220,25 +234,6 @@ void translator_impl::visitUnaryOpNode( UnaryOpNode* node )
     throw error("The method or operation is not implemented.");
 }
 
-Status* translator_impl::translate(const string& program, Code **code)
-{
-    Parser parser;
-    Status* status = parser.parseProgram(program);
-    if (status && !status->isOk())
-        return status;
-
-    dst_code_ = new code_impl();
-    try
-    {
-        parser.top()->node()->visit(this);
-        *code = dst_code_;
-        return new Status();
-    }
-    catch (error const &e)
-    {
-        return new Status(e.what());
-    }
-}
 
 
 translator_impl::translator_impl()
@@ -336,6 +331,52 @@ void translator_impl::process_var(bool store, AstVar const *var)
     if (!is_local)
         bytecode()->addInt16(ids.first);
     bytecode()->addInt16(ids.second);
+}
+
+function_id_t translator_impl::find_function(string const &name) const
+{
+    AstFunction const * ast_fn = current_scope_->lookupFunction(name, true);
+    context_t const &context = contexts_.at(ast_fn->owner());
+    return context.functions.at(name);
+}
+
+void translator_impl::init()
+{
+    tos_type_ = VT_INVALID;
+    dst_code_ = NULL;
+    dst_func_id_ = -1;
+    current_scope_ = NULL;
+    signature_ = NULL;
+    contexts_.clear();
+}
+
+void translator_impl::prepare(AstFunction *top)
+{
+    dst_code_ = new code_impl();
+    current_scope_ = top->scope();
+    add_context(current_scope_, NULL);
+}
+
+Status* translator_impl::translate(const string& program, Code **code)
+{
+    init();
+
+    Parser parser;
+    Status* status = parser.parseProgram(program);
+    if (status && !status->isOk())
+        return status;
+
+    try
+    {
+        prepare(parser.top());
+        parser.top()->node()->visit(this);
+        *code = dst_code_;
+        return new Status();
+    }
+    catch (error const &e)
+    {
+        return new Status(e.what());
+    }
 }
 
 } // namespace mathvm
