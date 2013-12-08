@@ -6,42 +6,57 @@
 namespace mathvm
 {
 
-translator_impl::ret_type translator_impl::visitDoubleLiteralNode(DoubleLiteralNode* node)
+void translator_impl::visitDoubleLiteralNode(DoubleLiteralNode* node)
 {
     bytecode()->addInsn(BC_DLOAD);
     bytecode()->addDouble(node->literal()); 
     tos_type_ = VT_DOUBLE;
 }
 
-translator_impl::ret_type translator_impl::visitWhileNode( WhileNode* node )
+void translator_impl::visitWhileNode( WhileNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitForNode( ForNode* node )
+void translator_impl::visitForNode( ForNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitFunctionNode(FunctionNode* node)
+void translator_impl::visitFunctionNode(FunctionNode* node)
 {
+    signature_ = &node->signature();
     node->body()->visit(this);
 }
 
-translator_impl::ret_type translator_impl::visitBlockNode(BlockNode* node)
+void translator_impl::visitBlockNode(BlockNode* node)
 {
-    add_context(node->scope());
+    add_context(node->scope(), signature_);
+    signature_ = NULL;
+
+    typedef vector<AstNode*> nodes_vector_t;
+    nodes_vector_t to_visit;
+
+    for (Scope::FunctionIterator it(node->scope(), false); it.hasNext(); )
+    {
+        AstFunction *fn = it.next();
+        to_visit.push_back(fn->node());
+    }
 
     for (uint32_t i = 0; i < node->nodes(); ++i)
+        to_visit.push_back(node->nodeAt(i));
+
+    for (size_t i = 0; i < to_visit.size(); ++i)
     {
         current_scope_ = node->scope();
         dst_code_->set_context(contexts_.at(current_scope_).id);
         tos_type_ = VT_VOID;
-        
-        node->nodeAt(i)->visit(this);
+
+        to_visit.at(i)->visit(this);
         if (tos_type_ != VT_VOID)
             bytecode()->addInsn(BC_POP);
     }
+
     current_scope_ = node->scope();
     dst_code_->set_context(contexts_.at(current_scope_).id);
     tos_type_ = VT_VOID;
@@ -50,9 +65,23 @@ translator_impl::ret_type translator_impl::visitBlockNode(BlockNode* node)
     contexts_.erase(current_scope_);
 }
 
-void translator_impl::add_context(Scope *scope)
+void translator_impl::add_context(Scope *scope, Signature const *signature)
 {
     context_t context(contexts_.size());
+
+    if (signature)
+    {
+        assert(context.vars.size() == 0);
+
+        for (var_id_t i = 0; i < signature->size(); ++i)
+        {
+            const string name = signature->at(i).second;
+            const bool inserted = context.vars.insert(make_pair(name, i)).second;
+            assert(inserted);
+        }
+        
+        assert(context.vars.size() == signature->size());
+    }
 
     for (Scope::VarIterator it(scope, false); it.hasNext();)
     {
@@ -64,17 +93,17 @@ void translator_impl::add_context(Scope *scope)
 }
 
 
-translator_impl::ret_type translator_impl::visitIfNode( IfNode* node )
+void translator_impl::visitIfNode( IfNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitNativeCallNode( NativeCallNode* node )
+void translator_impl::visitNativeCallNode( NativeCallNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitPrintNode(PrintNode* node)
+void translator_impl::visitPrintNode(PrintNode* node)
 {
     for (uint32_t i = 0; i < node->operands(); ++i)
     {
@@ -93,7 +122,7 @@ translator_impl::ret_type translator_impl::visitPrintNode(PrintNode* node)
     tos_type_ = VT_VOID;
 }
 
-translator_impl::ret_type translator_impl::visitBinaryOpNode(BinaryOpNode* node)
+void translator_impl::visitBinaryOpNode(BinaryOpNode* node)
 {
     node->left()->visit(this);
     const VarType type1 = tos_type_;
@@ -139,7 +168,7 @@ Instruction translator_impl::make_instruction(TokenKind op, VarType type1, VarTy
 }
 
 
-translator_impl::ret_type translator_impl::visitStringLiteralNode(StringLiteralNode* node)
+void translator_impl::visitStringLiteralNode(StringLiteralNode* node)
 {
     const uint16_t id = dst_code_->makeStringConstant(node->literal());
     
@@ -148,19 +177,19 @@ translator_impl::ret_type translator_impl::visitStringLiteralNode(StringLiteralN
     tos_type_ = VT_STRING;
 }
 
-translator_impl::ret_type translator_impl::visitCallNode( CallNode* node )
+void translator_impl::visitCallNode( CallNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitIntLiteralNode(IntLiteralNode* node)
+void translator_impl::visitIntLiteralNode(IntLiteralNode* node)
 {
     bytecode()->addInsn(BC_ILOAD);
     bytecode()->addInt64(node->literal()); 
     tos_type_ = VT_INT;
 }
 
-translator_impl::ret_type translator_impl::visitStoreNode(StoreNode* node)
+void translator_impl::visitStoreNode(StoreNode* node)
 {
     node->value()->visit(this);
 
@@ -175,18 +204,18 @@ translator_impl::ret_type translator_impl::visitStoreNode(StoreNode* node)
     tos_type_ = node->var()->type();
 }
 
-translator_impl::ret_type translator_impl::visitLoadNode(LoadNode* node)
+void translator_impl::visitLoadNode(LoadNode* node)
 {
     load_tos_var(node->var());
     tos_type_ = node->var()->type();
 }
 
-translator_impl::ret_type translator_impl::visitReturnNode( ReturnNode* node )
+void translator_impl::visitReturnNode( ReturnNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
 
-translator_impl::ret_type translator_impl::visitUnaryOpNode( UnaryOpNode* node )
+void translator_impl::visitUnaryOpNode( UnaryOpNode* node )
 {
     throw error("The method or operation is not implemented.");
 }
@@ -215,6 +244,7 @@ Status* translator_impl::translate(const string& program, Code **code)
 translator_impl::translator_impl()
     : dst_code_(NULL)
     , current_scope_(NULL)
+    , signature_(NULL)
 {
 
 }

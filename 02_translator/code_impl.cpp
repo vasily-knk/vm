@@ -19,9 +19,16 @@ code_impl::~code_impl()
 Status* code_impl::execute(vector<Var*>& vars)
 {
     interpreter ir;
-    ir.interpret(this);
-
-    return new Status();
+    
+    try
+    {
+        ir.interpret(this);
+        return new Status();
+    }
+    catch (error const &e)
+    {
+        return new Status(e.what());
+    }
 }
 
 
@@ -29,6 +36,11 @@ Status* code_impl::execute(vector<Var*>& vars)
 void code_impl::set_context(context_id_t id)
 {
     context_ids_[bytecode_.length()] = id;
+}
+
+Bytecode *code_impl::dst_bc()
+{
+    return &bytecode_;
 }
 
 

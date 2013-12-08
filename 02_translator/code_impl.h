@@ -21,7 +21,7 @@ struct code_impl
 
 public:
     void set_context(context_id_t id);
-    Bytecode *dst_bc() { return &bytecode_; }
+    Bytecode *dst_bc();
 
 
 private:
@@ -34,11 +34,10 @@ private:
 
 private:
     //function
+
     Bytecode const *bytecode() OVERRIDE { return &bytecode_; } 
     bool has_local_context(size_t pos) OVERRIDE { return context_ids_.count(pos) != 0; }
     context_id_t local_context(size_t pos) OVERRIDE { return context_ids_.at(pos); }
-
-
 
 private:
     Bytecode bytecode_;
