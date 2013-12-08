@@ -1,5 +1,7 @@
 #pragma once
 
+#include "function.h"
+
 namespace mathvm
 {
 
@@ -7,10 +9,10 @@ struct interpreted
 {
     virtual ~interpreted() {};
 
-    virtual Bytecode const *bytecode() = 0;
-    virtual bool has_local_context(size_t pos) = 0;
-    virtual context_id_t local_context(size_t pos) = 0;
-    virtual string const& string_const(int16_t id) = 0;
+    virtual function_id_t get_top_function() = 0;
+    virtual function_id_t num_functions() = 0;
+    virtual function *get_function(function_id_t id) = 0;
+    virtual string const& get_string_const(int16_t id) = 0;
 };
 
 } // namespace mathvm

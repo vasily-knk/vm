@@ -20,15 +20,22 @@ struct unsupported_insn
 void interpreter::interpret(interpreted *code)
 {
     code_ = code;
+    func_ = code_->get_function(code_->get_top_function());
 
-    for (size_t pos = 0; pos < code_->bytecode()->length();)
+    process_func();
+
+}
+
+void interpreter::process_func()
+{
+    for (size_t pos = 0; pos < func_->bytecode()->length();)
     {
         size_t length;
-        const Instruction insn = code_->bytecode()->getInsn(pos);
+        const Instruction insn = func_->bytecode()->getInsn(pos);
         const char* name = bytecodeName(insn, &length);
 
-        if (code->has_local_context(pos))
-            context_id_ = code_->local_context(pos);
+        if (func_->has_local_context(pos))
+            context_id_ = func_->local_context(pos);
 
         pos_ = pos + 1;
         process_insn(insn);

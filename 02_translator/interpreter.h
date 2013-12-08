@@ -10,6 +10,9 @@ struct interpreter
     void interpret(interpreted *code);
 
 private:
+    void process_func();
+
+private:
     void process_insn(Instruction insn);
 
     template<typename T> void process_load();
@@ -32,7 +35,7 @@ private:
 private:
     template<typename T> T read()
     {
-        const T res = code_->bytecode()->getTyped<T>(pos_);
+        const T res = func_->bytecode()->getTyped<T>(pos_);
         pos_ += sizeof(T);
         return res;
     }
@@ -41,11 +44,12 @@ private:
     const char* read<const char*>()
     {
         const int16_t id = read<int16_t>();
-        return code_->string_const(id).c_str();
+        return code_->get_string_const(id).c_str();
     }
 
 private:
     interpreted *code_;
+    function *func_;
 
     typedef map<std::pair<context_id_t, var_id_t>, Var> vars_t;
     vars_t vars_;

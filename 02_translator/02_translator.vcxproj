@@ -76,6 +76,7 @@
   <ItemGroup>
     <ClInclude Include="code_impl.h" />
     <ClInclude Include="defs.h" />
+    <ClInclude Include="function.h" />
     <ClInclude Include="interpreted.h" />
     <ClInclude Include="interpreter.h" />
     <ClInclude Include="stdafx.h" />
