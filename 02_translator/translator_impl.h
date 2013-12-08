@@ -35,18 +35,8 @@ private:
 private:
     Bytecode *bytecode()
     {
-        return dst_code_->bytecode();
+        return dst_code_->dst_bc();
     }
-
-    struct error
-        : std::runtime_error
-    {
-        error(string const &msg)
-            : std::runtime_error(msg)
-        {
-
-        }
-    };
 
     struct context_t
     {

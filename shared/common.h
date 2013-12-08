@@ -25,3 +25,7 @@ using std::map;
 #include <stdexcept>
 
 #include <stack>
+
+#include <stdint.h>
+
+#define OVERRIDE override

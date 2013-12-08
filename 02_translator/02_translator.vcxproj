@@ -75,11 +75,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="code_impl.h" />
+    <ClInclude Include="defs.h" />
+    <ClInclude Include="interpreted.h" />
+    <ClInclude Include="interpreter.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="translator_impl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="code_impl.cpp" />
+    <ClCompile Include="interpreter.cpp" />
     <ClCompile Include="main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
