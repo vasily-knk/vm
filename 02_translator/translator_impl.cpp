@@ -226,7 +226,10 @@ void translator_impl::visitLoadNode(LoadNode* node)
 
 void translator_impl::visitReturnNode(ReturnNode* node)
 {
-    throw error("The method or operation is not implemented.");
+    if (node->returnExpr()) 
+        node->returnExpr()->visit(this);
+    
+    bytecode()->addInsn(BC_RETURN);
 }
 
 void translator_impl::visitUnaryOpNode( UnaryOpNode* node )
