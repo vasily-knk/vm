@@ -11,27 +11,50 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\vm\ast.cpp" />
-    <ClCompile Include="..\..\..\..\vm\interpreter.cpp" />
-    <ClCompile Include="..\..\..\..\vm\jit.cpp" />
-    <ClCompile Include="..\..\..\..\vm\mathvm.cpp" />
-    <ClCompile Include="..\..\..\..\vm\parser.cpp" />
-    <ClCompile Include="..\..\..\..\vm\scanner.cpp" />
-    <ClCompile Include="..\..\..\..\vm\translator.cpp" />
-    <ClCompile Include="..\..\..\..\vm\utils.cpp" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\ApiBegin.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\ApiEnd.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\AsmJit.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Assembler.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\AssemblerX86X64.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Build.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\CodeGenerator.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Compiler.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\CompilerX86X64.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Config.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\CpuInfo.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Defs.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\DefsX86X64.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Logger.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\MemoryManager.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Operand.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\OperandX86X64.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Platform.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Util.h" />
+    <ClInclude Include="..\..\..\..\libs\AsmJit\Util_p.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\include\ast.h" />
-    <ClInclude Include="..\..\..\..\include\mathvm.h" />
-    <ClInclude Include="..\..\..\..\include\visitors.h" />
-    <ClInclude Include="..\..\..\..\vm\jit.h" />
-    <ClInclude Include="..\..\..\..\vm\parser.h" />
-    <ClInclude Include="..\..\..\..\vm\scanner.h" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Assembler.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\AssemblerX86X64.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\CodeGenerator.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Compiler.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\CompilerX86X64.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\CpuInfo.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Defs.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\DefsX86X64.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Logger.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\MemoryManager.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Operand.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\OperandX86X64.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Platform.cpp" />
+    <ClCompile Include="..\..\..\..\libs\AsmJit\Util.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\libs\AsmJit\README.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{E58CBC9F-9561-4467-BC79-408D36984304}</ProjectGuid>
+    <ProjectGuid>{399DDD19-85CB-4A48-B22D-CB5B0218D3FC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>vm</RootNamespace>
+    <RootNamespace>asmjit</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -57,12 +80,7 @@
     <Import Project="..\shared\vm.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>fake_includes;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>fake_includes;$(IncludePath)</IncludePath>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>
@@ -70,7 +88,6 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ForcedIncludeFiles>fixes.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
