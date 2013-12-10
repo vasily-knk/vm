@@ -4,36 +4,6 @@
 namespace mathvm
 {
 
-namespace
-{
-
-void print_escape( std::string const &str, std::ostream & out ) {
-    out << "\'";
-    for (unsigned int i = 0; i < str.length(); ++i)
-        switch(str[i]) {
-        case '\\':
-            out << "\\\\";
-            break;
-        case '\r':
-            out << "\\r";
-            break;        
-        case '\t':
-            out << "\\t";
-            break;
-        case '\n':
-            out << "\\n";
-            break;
-        default:
-            out << str[i];
-            break;
-    }
-    out << "\'";
-}
-
-}
-
-#define AST_PRINT(items) { ident(); stream_ << items; }
-
 ast_printer::ast_printer() 
     : indent_(0) 
     , needSemicolon(true)
@@ -59,7 +29,22 @@ void ast_printer::visitUnaryOpNode(UnaryOpNode* node)
 
 void ast_printer::visitStringLiteralNode(StringLiteralNode* node) 
 {
-    print_escape(node->literal(), stream_);
+    string const &str = node->literal();
+    stream_ << "\'";
+    
+    for (uint32_t i = 0; i < str.length(); ++i)
+    {
+        switch(str.at(i)) 
+        {
+        case '\\': stream_ << "\\\\"; break;
+        case '\r': stream_ << "\\r" ; break;        
+        case '\t': stream_ << "\\t" ; break;
+        case '\n': stream_ << "\\n" ; break;
+        default:   stream_ << str[i];
+        }
+    }
+    
+    stream_ << "\'";
 }
 
 void ast_printer::visitDoubleLiteralNode(DoubleLiteralNode* node) 
