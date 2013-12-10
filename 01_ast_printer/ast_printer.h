@@ -18,14 +18,13 @@ struct ast_printer
 #undef VISITOR_FUNCTION
 
 private:
-    void ident();
+    void indent();
     static bool is_top(FunctionNode const *node);
 
 private:
     stringstream stream_;
     
     int indent_;
-    bool needSemicolon;    
 };
 
 } // namespace mathvm 
