@@ -32,6 +32,8 @@ void print_escape( std::string const &str, std::ostream & out ) {
 
 }
 
+#define AST_PRINT(items) { ident(); stream_ << items; }
+
 ast_printer::ast_printer() 
     : indent_(0) 
     , needSemicolon(true)
@@ -42,125 +44,135 @@ ast_printer::~ast_printer()
 {
 }
 
-
-string ast_printer::get_indent_line() const 
-{
-    string indent_line;
-    for(int i = 0; i < indent_; ++i) 
-        indent_line += "    ";
-
-    return indent_line;
-}
-
-void ast_printer::visitBinaryOpNode( BinaryOpNode* node ) 
+void ast_printer::visitBinaryOpNode(BinaryOpNode* node) 
 {    
     node->left()->visit(this);    
     stream_ << " " << tokenOp(node->kind()) << " ";    
     node->right()->visit(this);      
 }
 
-void ast_printer::visitUnaryOpNode( UnaryOpNode* node ) 
+void ast_printer::visitUnaryOpNode(UnaryOpNode* node) 
 {
     stream_ << tokenOp(node->kind());
     node->operand()->visit(this);
 }
 
-void ast_printer::visitStringLiteralNode( StringLiteralNode* node ) 
+void ast_printer::visitStringLiteralNode(StringLiteralNode* node) 
 {
     print_escape(node->literal(), stream_);
 }
 
-void ast_printer::visitDoubleLiteralNode( DoubleLiteralNode* node ) 
+void ast_printer::visitDoubleLiteralNode(DoubleLiteralNode* node) 
 {
     stream_ << node->literal();    
 }
 
-void ast_printer::visitIntLiteralNode( IntLiteralNode* node ) 
+void ast_printer::visitIntLiteralNode(IntLiteralNode* node) 
 {
     stream_ << node->literal();    
 }
 
-void ast_printer::visitLoadNode( LoadNode* node ) 
+void ast_printer::visitLoadNode(LoadNode* node) 
 {
     stream_ << node->var()->name();  
 }
 
-void ast_printer::visitStoreNode( StoreNode* node ) 
+void ast_printer::visitStoreNode(StoreNode* node) 
 {
     stream_ << node->var()->name() << " " << tokenOp(node->op()) << " ";
     node->visitChildren(this);
     needSemicolon = true;
 }
 
-void ast_printer::visitForNode( ForNode* node ) 
+void ast_printer::visitForNode(ForNode* node) 
 {
     stream_ << "for (" << node->var()->name() << " in ";
     node->inExpr()->visit(this);
-        
-    stream_ << ")" << endl << "{" << endl;
+    stream_ << ")" << endl;
 
+    ident();
+    stream_ << "{" << endl;
     node->body()->visit(this);
-
-    stream_ << "}";
-    stream_ << endl;
+    
+    ident();
+    stream_ << "}" << endl;
     needSemicolon = false;
 }
 
-void ast_printer::visitWhileNode( WhileNode* node ) {
-
+void ast_printer::visitWhileNode(WhileNode* node) 
+{
     stream_  << "while (";
     node->whileExpr()->visit(this);
-    stream_ << ") {" << endl;
+    stream_ << ")" << endl;
+
+    ident();
+    stream_ << "{" << endl;
 
     node->loopBlock()->visit(this);
-    stream_ << "}";
-    stream_ << endl;
+    
+    ident();
+    stream_ << "}" << endl;
     needSemicolon = false;
 }
 
-void ast_printer::visitIfNode( IfNode* node ) {
-
+void ast_printer::visitIfNode( IfNode* node ) 
+{
     stream_ <<  "if (";
     node->ifExpr()->visit(this);
-    stream_ << ") {" << endl;
+    stream_ << ")" << endl;
 
+    ident();
+    stream_ << "{" << endl;
     node->thenBlock()->visit(this);
-    stream_ << get_indent_line() << "}";
+
     needSemicolon = false;
 
-    if (node->elseBlock() == 0) {
-        stream_ << endl;
-        return;
+    ident();
+    stream_ << "}" << endl;
+
+    if (node->elseBlock())
+    {
+        ident();
+        stream_ << "else" << endl;
+        ident();
+        stream_ << "{" << endl;
+
+        node->elseBlock()->visit(this);
+        
+        ident();
+        stream_ << "}" << endl;
     }
-
-    stream_ << " else {" << endl;    
-    node->elseBlock()->visit(this);
-    stream_ << get_indent_line() << "}";
-    stream_ << endl;
     needSemicolon = false;
-
 }
 
 
-void ast_printer::visitBlockNode( BlockNode* node ) {
-    //Border border("blockNode", stream_);
+void ast_printer::visitBlockNode(BlockNode* node) 
+{
     ++indent_;
+
     Scope::VarIterator var_iter(node->scope());
     bool hasVarDeclaration = var_iter.hasNext();
 
-    while(var_iter.hasNext()) {
-        AstVar const * var = var_iter.next();
-        stream_ << get_indent_line() << typeToName(var->type()) << " " << var->name() <<";" << endl;    
+    
+    for (Scope::VarIterator it(node->scope(), false); it.hasNext(); )
+    {
+        AstVar const *var = it.next();
+        
+        ident();
+        stream_ << typeToName(var->type()) << " " << var->name() <<";" << endl;    
     }
 
-    if(hasVarDeclaration)
-        stream_ << endl;
+    for (Scope::FunctionIterator it(node->scope(), false); it.hasNext(); )
+    {
+        AstFunction const *fn = it.next();
 
-    Scope::FunctionIterator func(node->scope());
-    while(func.hasNext()) func.next()->node()->visit(this);
+        ident();
+        fn->node()->visit(this);
+    }
+
     for (uint32_t i = 0; i < node->nodes(); ++i)
     {
-        stream_ << get_indent_line();
+        ident();
         node->nodeAt(i)->visit(this);
 
         if (needSemicolon) {
@@ -169,83 +181,104 @@ void ast_printer::visitBlockNode( BlockNode* node ) {
 
         stream_ << endl;
         needSemicolon = true;
-    }   
+    }
+
     --indent_;    
 }
 
-void ast_printer::visitFunctionNode( FunctionNode* node ) {
-    if(node->name() == "<top>") {
+void ast_printer::visitFunctionNode(FunctionNode* node) 
+{
+    if(is_top(node)) {
         indent_ = -1;
         node->body()->visit(this);
         return;
     }
 
-    stream_ << endl;
-    stream_ << get_indent_line() << "function " << typeToName(node->returnType()) << " " << node->name() << "(";
+    stream_ << "function " << typeToName(node->returnType()) << " " << node->name() << "(";
 
-    for (unsigned int j = 0; j < node->parametersNumber(); ++j) {
-        if (j > 0) stream_ << ", ";
+    for (uint32_t i = 0; i < node->parametersNumber(); ++i)
+    {
+        stream_ << typeToName(node->parameterType(i)) << " " << node->parameterName(i);
 
-        stream_ << typeToName(node->parameterType(j)) << " " << node->parameterName(j);
+        if (i != node->parametersNumber() - 1)
+            stream_ << ", ";
     }
 
-    stream_ << ") ";
+    stream_ << ")" << endl;
 
-    if (node->body()->nodes() > 0 && node->body()->nodeAt(0)->isNativeCallNode()) {
-        node->body()->nodeAt(0)->visit(this);
-    } else {
-        stream_ << "{" << endl;
+    ident();
+    stream_ << "{" << endl;
 
-        node->body()->visit(this);
+    node->body()->visit(this);
 
-        stream_ << "}" << endl;
-        needSemicolon = false;
-    }
+    ident();
+    stream_ << "}" << endl;
 }
 
-void ast_printer::visitReturnNode( ReturnNode* node ) {
+void ast_printer::visitReturnNode(ReturnNode* node) 
+{
     needSemicolon = false;
 
-    if(node->returnExpr() != 0) {
-        stream_ << "return ";
+    stream_ << "return";
+    
+    if (node->returnExpr())
+    {
+        stream_ << " ";
         node->returnExpr()->visit(this);
-        needSemicolon = true;
-    }        
+    }
+
+    needSemicolon = true;
 }
 
-void ast_printer::visitCallNode( CallNode* node ) {
+void ast_printer::visitCallNode(CallNode* node) 
+{
     stream_ << node->name() << "(";
 
     for (unsigned int i = 0; i < node->parametersNumber(); ++i) {
-        if (i > 0) stream_ << ", ";
         node->parameterAt(i)->visit(this);
+
+        if (i != node->parametersNumber() - 1)
+            stream_ << ", ";
     }
+    
     stream_ << ")";
     needSemicolon = true;
 }
 
-void ast_printer::visitNativeCallNode( NativeCallNode* node ) {
-    stream_ << "native '"<< node->nativeName() << "';" << endl;
+void ast_printer::visitNativeCallNode(NativeCallNode* node) 
+{
 }
 
-
-void ast_printer::visitPrintNode( PrintNode* node ) {
+void ast_printer::visitPrintNode(PrintNode* node) 
+{
     stream_ << "print(";
 
     for (unsigned int i = 0; i < node->operands(); ++i) {
-        if (i > 0) stream_ << ", ";
-        AstNode *pNode = node->operandAt(i);
-        pNode->visit(this);
+        node->operandAt(i)->visit(this);
+
+        if (i != node->operands() - 1)
+            stream_ << ", ";
     }
     stream_ << ")";
     needSemicolon = true;
 }
 
-string ast_printer::print_tree( AstNode *head )
+string ast_printer::print_tree(AstNode *head)
 {
     stream_.clear();
     head->visit(this);
     return stream_.str();
+}
+
+void ast_printer::ident()
+{
+    for(int i = 0; i < indent_; ++i) 
+        stream_ <<  "    ";
+}
+
+bool ast_printer::is_top(FunctionNode const *node)
+{
+    return node->name() == "<top>";
 }
 
 

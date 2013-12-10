@@ -4,18 +4,23 @@
 #include "mathvm.h"
 #include "ast_printer.h"
 
-int main() 
+int main(int argc, char* argv[]) 
 {
-    const char* buffer = mathvm::loadFile("1.mvm");
+    if(argc < 2) 
+    {
+        cerr << "Usage: ast_printer filename" << endl;
+        return 1;
+    } 
+
+    char *buffer =  mathvm::loadFile(argv[1]);
     const string text(buffer);
     delete[] buffer;
-
-    cout << text << endl;
 
     mathvm::Parser parser;
     mathvm::Status* status = parser.parseProgram(text);
 
-    if(status != NULL && !status->isOk()) {
+    if(status != NULL && !status->isOk()) 
+    {
         cerr << status->getError() << endl;
         return 1;       
     }

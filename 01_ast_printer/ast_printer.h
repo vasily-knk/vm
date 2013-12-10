@@ -18,7 +18,8 @@ struct ast_printer
 #undef VISITOR_FUNCTION
 
 private:
-    string get_indent_line() const;
+    void ident();
+    static bool is_top(FunctionNode const *node);
 
 private:
     stringstream stream_;
