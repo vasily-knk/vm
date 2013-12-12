@@ -19,11 +19,20 @@ struct unsupported_insn
 
 void interpreter::interpret(interpreted *code)
 {
+    /*
+    for (size_t i = 0; i < code->num_functions(); ++i)
+    {
+        cout << "Function " << i << endl << endl;
+
+        code->get_function(i)->bytecode()->dump(cout);
+        
+        cout << endl;
+    }
+    */
+
     code_ = code;
     func_ = code_->get_function(code_->get_top_function());
-
     process_func();
-
 }
 
 void interpreter::process_func()
@@ -38,7 +47,14 @@ void interpreter::process_func()
             context_id_ = func_->local_context(pos);
 
         pos_ = pos + 1;
+        
+        return_ = false;
         process_insn(insn);
+        if (return_)
+        {
+            return_ = false;
+            break;
+        }
 
         pos += length;
     }
@@ -96,6 +112,8 @@ void interpreter::process_insn(Instruction insn)
     case BC_STORECTXIVAR: process_store_ctx<i_t>(); break;
     case BC_STORECTXSVAR: process_store_ctx<s_t>(); break;
 
+    case BC_CALL: process_call(); break;
+    case BC_RETURN: return_ = true; break;
 
     default: throw unsupported_insn(insn);
     }
@@ -237,6 +255,18 @@ void interpreter::process_store_var(context_id_t context_id, var_id_t var_id)
 {
     vars_.insert(std::make_pair(std::make_pair(context_id, var_id), stack_.top()));
     stack_.pop();
+}
+
+void interpreter::process_call()
+{
+    function *old_func = func_; 
+    const function_id_t id = read<function_id_t>();
+    
+    func_ = code_->get_function(id);
+
+    process_func();
+
+    func_ = old_func;
 }
 
 } // namespace mathvm

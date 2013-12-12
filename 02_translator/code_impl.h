@@ -27,8 +27,9 @@ struct function_impl
     void set_context(context_id_t id)
     {
         const size_t pos = bytecode_.length();
-        const bool inserted = context_ids_.insert(make_pair(pos, id)).second;
-        assert(inserted);
+        context_ids_[pos] = id;
+//         const bool inserted = context_ids_.insert(make_pair(pos, id)).second;
+//         assert(inserted);
     }
     Bytecode *bytecode_dst()
     {

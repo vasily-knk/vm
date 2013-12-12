@@ -28,65 +28,86 @@ void translator_impl::visitFunctionNode(FunctionNode* node)
     context_t const &context = contexts_.at(current_scope_);
     const function_id_t id = context.functions.at(node->name());
     
+    const function_id_t old_id = dst_func_id_ ;
     dst_func_id_ = id;
 
+    Signature const *old_signature =  signature_;
     signature_ = &node->signature();
+    
+    for (uint32_t i = 1; i < signature_->size(); ++i)
+    {
+
+    }
+    
+    
     node->body()->visit(this);
+    signature_ = old_signature;
+
+    dst_func_id_ = old_id;
 }
 
 void translator_impl::visitBlockNode(BlockNode* node)
 {
-    add_context(node->scope(), signature_);
-    signature_ = NULL;
-
     typedef vector<AstNode*> nodes_vector_t;
-    nodes_vector_t to_visit;
 
+    if (signature_)
+    {
+        Scope *args_scope = node->scope()->parent();
+        
+        assert(signature_->size() >= 1);
+        for (uint32_t i = 1; i < signature_->size(); ++i)
+        {
+            tos_type_ = signature_->at(i).first;
+            
+            string const &name = signature_->at(i).second;
+            AstVar *var_node = args_scope->lookupVariable(name, false);
+            assert(var_node);
+
+            store_tos_var(var_node);
+        }
+        
+        signature_ = NULL;
+    }
+    
+    
     for (Scope::FunctionIterator it(node->scope(), false); it.hasNext(); )
     {
         AstFunction *fn = it.next();
-        to_visit.push_back(fn->node());
+        current_scope_ = node->scope();
+        dst_code_->get_function_dst(dst_func_id_)->set_context(contexts_.at(current_scope_).id);
+
+        fn->node()->visit(this);
     }
 
     for (uint32_t i = 0; i < node->nodes(); ++i)
-        to_visit.push_back(node->nodeAt(i));
-
-    for (size_t i = 0; i < to_visit.size(); ++i)
     {
         current_scope_ = node->scope();
         dst_code_->get_function_dst(dst_func_id_)->set_context(contexts_.at(current_scope_).id);
         tos_type_ = VT_VOID;
 
-        to_visit.at(i)->visit(this);
+        return_ = false;
+        node->nodeAt(i)->visit(this);
+
+        if (return_)
+        {   
+            return_ = false;
+            break;
+        }
+
         if (tos_type_ != VT_VOID)
             bytecode()->addInsn(BC_POP);
     }
 
     current_scope_ = node->scope();
     dst_code_->get_function_dst(dst_func_id_)->set_context(contexts_.at(current_scope_).id);
-    tos_type_ = VT_VOID;
+    //tos_type_ = VT_VOID;
     
     assert(current_scope_ == node->scope());
-    contexts_.erase(current_scope_);
 }
 
-void translator_impl::add_context(Scope *scope, Signature const *signature)
+void translator_impl::add_context(Scope *scope, context_id_t id)
 {
-    context_t context(contexts_.size());
-
-    if (signature)
-    {
-        assert(context.vars.size() == 0);
-
-        for (var_id_t i = 0; i < signature->size(); ++i)
-        {
-            const string name = signature->at(i).second;
-            const bool inserted = context.vars.insert(make_pair(name, i)).second;
-            assert(inserted);
-        }
-        
-        assert(context.vars.size() == signature->size());
-    }
+    context_t context(id);
 
     for (Scope::VarIterator it(scope, false); it.hasNext();)
     {
@@ -191,9 +212,27 @@ void translator_impl::visitStringLiteralNode(StringLiteralNode* node)
     tos_type_ = VT_STRING;
 }
 
-void translator_impl::visitCallNode( CallNode* node )
+void translator_impl::visitCallNode(CallNode* node)
 {
-    throw error("The method or operation is not implemented.");
+    AstFunction *fn = current_scope_->lookupFunction(node->name(), true);
+    Scope *owner = fn->owner();
+
+    context_t const &context = contexts_.at(owner);
+    const function_id_t id = context.functions.at(node->name());
+
+    Signature const &signature = fn->node()->signature();
+    
+    assert(node->parametersNumber() == signature.size() - 1);
+
+    for (uint32_t i = 0; i < node->parametersNumber(); ++i)
+    {
+        AstNode *p = node->parameterAt(node->parametersNumber() - i - 1);
+        p->visit(this);
+        assert(tos_type_ == signature.at(node->parametersNumber() - i).first);
+    }
+
+    bytecode()->addInsn(BC_CALL);
+    bytecode()->addInt16(id);
 }
 
 void translator_impl::visitIntLiteralNode(IntLiteralNode* node)
@@ -227,7 +266,11 @@ void translator_impl::visitLoadNode(LoadNode* node)
 void translator_impl::visitReturnNode(ReturnNode* node)
 {
     if (node->returnExpr()) 
+    {
         node->returnExpr()->visit(this);
+    }
+    else
+        tos_type_ = VT_VOID;
     
     bytecode()->addInsn(BC_RETURN);
 }
@@ -242,7 +285,6 @@ void translator_impl::visitUnaryOpNode( UnaryOpNode* node )
 translator_impl::translator_impl()
     : dst_code_(NULL)
     , current_scope_(NULL)
-    , signature_(NULL)
 {
 
 }
@@ -357,7 +399,7 @@ void translator_impl::prepare(AstFunction *top)
 {
     dst_code_ = new code_impl();
     current_scope_ = top->scope();
-    add_context(current_scope_, NULL);
+    init_contexts(top->owner());
 }
 
 Status* translator_impl::translate(const string& program, Code **code)
@@ -379,6 +421,15 @@ Status* translator_impl::translate(const string& program, Code **code)
     catch (error const &e)
     {
         return new Status(e.what());
+    }
+}
+
+void translator_impl::init_contexts(Scope *scope, uint32_t depth)
+{
+    add_context(scope, depth);
+    for (uint32_t i = 0; i < scope->childScopeNumber(); ++i)
+    {
+        init_contexts(scope->childScopeAt(i), depth + 1);
     }
 }
 

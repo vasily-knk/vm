@@ -32,6 +32,8 @@ private:
     template<typename T> void process_store_ctx();
     template<typename T> void process_store_var(context_id_t context_id, var_id_t var_id);
 
+    void process_call();
+
 private:
     template<typename T> T read()
     {
@@ -59,6 +61,8 @@ private:
 
     size_t pos_;
     context_id_t context_id_;
+
+    bool return_;
 };
 
 } // namespace mathvm
